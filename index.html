@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>YUSR AI</title>
+<style>
+body { font-family: Arial, sans-serif; margin: 20px; }
+#chat { white-space: pre-wrap; border:1px solid #ccc; padding:10px; height:300px; overflow-y:scroll; }
+input { width:80%; padding:5px; }
+button { padding:5px; }
+</style>
+</head>
+<body>
+<h1>YUSR AI</h1>
+<div id="chat"></div>
+<input id="msg" type="text" placeholder="Type a message">
+<button onclick="sendMessage()">Send</button>
+
+<script>
+const API_TOKEN = "YOUR_HUGGINGFACE_TOKEN"; // replace with your Hugging Face API token
+const MODEL_URL = "https://api-inference.huggingface.co/models/meta-llama/Llama-2-7b-chat-hf";
+
+async function sendMessage() {
+    const input = document.getElementById("msg").value;
+    if(!input) return;
+
+    const chatDiv = document.getElementById("chat");
+    chatDiv.innerText += "You: " + input + "\n";
+
+    // Call Hugging Face API
+    const response = await fetch(MODEL_URL, {
+        method: "POST",
+        headers: {
+            "Authorization": `Bearer ${API_TOKEN}`,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({inputs: input, parameters: {max_new_tokens: 150}})
+    });
+
+    const data = await response.json();
+    let output = data[0]?.generated_text || "No response";
+
+    chatDiv.innerText += "YUSR AI: " + output + "\n";
+    chatDiv.scrollTop = chatDiv.scrollHeight;
+    document.getElementById("msg").value = "";
+}
+</script>
+</body>
+</html>
