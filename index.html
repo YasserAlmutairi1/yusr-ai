@@ -1,133 +1,40 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>YUSR AI Chatbot</title>
-<style>
-  /* Dark theme body */
-  body {
-    background-color: #121212;
-    color: #e0e0e0;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin: 0;
-    padding: 20px;
-    height: 100vh;
-  }
+import gradio as gr
+from transformers import pipeline
 
-  h1 {
-    color: #00ffae;
-    margin-bottom: 20px;
-  }
+# Load a LLaMA chat-optimized model
+generator = pipeline(
+    "text-generation",
+    model="meta-llama/Llama-2-7b-chat-hf"
+)
 
-  #chat-container {
-    width: 100%;
-    max-width: 700px;
-    height: 70%;
-    background-color: #1e1e1e;
-    border-radius: 12px;
-    padding: 15px;
-    overflow-y: auto;
-    box-shadow: 0 0 15px rgba(0, 255, 174, 0.3);
-    margin-bottom: 15px;
-  }
+# System prompt to guide the chat
+SYSTEM_PROMPT = "You are YUSR AI, a friendly and helpful chatbot. Respond concisely and naturally."
 
-  .message {
-    margin-bottom: 12px;
-    line-height: 1.5;
-  }
+# Chat function
+def chat(user_message, chat_history):
+    if not user_message.strip():
+        return chat_history, chat_history
+    prompt = SYSTEM_PROMPT + "\nUser: " + user_message + "\nYUSR AI:"
+    ai_response = generator(prompt, max_new_tokens=150)[0]["generated_text"]
+    chat_history = chat_history + [(user_message, ai_response)]
+    return chat_history, chat_history
 
-  .user {
-    color: #00aaff;
-  }
-
-  .ai {
-    color: #00ffae;
-  }
-
-  #input-container {
-    display: flex;
-    width: 100%;
-    max-width: 700px;
-  }
-
-  #msg {
-    flex: 1;
-    padding: 12px;
-    border-radius: 8px 0 0 8px;
-    border: none;
-    outline: none;
-    font-size: 16px;
-    background-color: #2c2c2c;
-    color: #e0e0e0;
-  }
-
-  #send-btn {
-    padding: 12px 20px;
-    border: none;
-    background-color: #00ffae;
-    color: #121212;
-    font-weight: bold;
-    cursor: pointer;
-    border-radius: 0 8px 8px 0;
-    transition: background 0.3s;
-  }
-
-  #send-btn:hover {
-    background-color: #00cc88;
-  }
-</style>
-</head>
-<body>
-
-<h1>YUSR AI 🤖</h1>
-
-<div id="chat-container"></div>
-
-<div id="input-container">
-  <input id="msg" type="text" placeholder="Type your message...">
-  <button id="send-btn" onclick="sendMessage()">Send</button>
-</div>
-
-<script>
-const API_TOKEN = "HUGGING_FACE_TOKEN"; // replace with your token
-const MODEL_URL = "https://api-inference.huggingface.co/models/meta-llama/Llama-2-7b-chat-hf";
-
-async function sendMessage() {
-    const input = document.getElementById("msg").value.trim();
-    if (!input) return;
-
-    const chatContainer = document.getElementById("chat-container");
-    chatContainer.innerHTML += `<div class="message user">You: ${input}</div>`;
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-
-    document.getElementById("msg").value = "";
+# Gradio interface
+with gr.Blocks(theme=gr.themes.Base()) as demo:
+    gr.Markdown("<h1 style='color:#00ffae;text-align:center;'>YUSR AI 🤖</h1>")
+    chatbot = gr.Chatbot()
     
-    try {
-        const response = await fetch(MODEL_URL, {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${API_TOKEN}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({inputs: input, parameters: {max_new_tokens: 150}})
-        });
+    with gr.Row():
+        msg = gr.Textbox(
+            placeholder="Type your message here...", 
+            show_label=False, 
+            lines=1
+        )
+        send_btn = gr.Button("Send")
+    
+    # Connect send button and Enter key
+    send_btn.click(chat, [msg, chatbot], [chatbot, chatbot])
+    msg.submit(chat, [msg, chatbot], [chatbot, chatbot])
 
-        const data = await response.json();
-        const output = data[0]?.generated_text || "YUSR AI could not respond.";
-
-        chatContainer.innerHTML += `<div class="message ai">YUSR AI: ${output}</div>`;
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-
-    } catch (error) {
-        chatContainer.innerHTML += `<div class="message ai">YUSR AI: Error connecting to API.</div>`;
-        console.error(error);
-    }
-}
-</script>
-
-</body>
-</html>
+# Launch the app
+demo.launch()
